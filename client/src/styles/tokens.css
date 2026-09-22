@@ -1,0 +1,170 @@
+/*
+ * CARDVEX Cost Control — design tokens
+ * Concept: an engineer's ledger / drawing sheet.
+ * Warm drafting paper, ink hairlines, a title block, safety-orange used sparingly.
+ * Three layers: primitive → semantic → component. Components only use semantic tokens.
+ */
+
+:root {
+  /* ---------- primitives ---------- */
+  --paper-50: #fbfaf7;
+  --paper-100: #f4f2ec;
+  --paper-200: #ebe8df;
+  --paper-300: #dedbd2;
+  --paper-400: #c9c5b9;
+  --ink-900: #16171a;
+  --ink-700: #3d3e43;
+  --ink-500: #5f6066;
+  --ink-400: #85868b;
+  --hivis-600: #c2410c;
+  --hivis-500: #e8590c;
+  --hivis-100: #fbe6d8;
+
+  /* ---------- semantic: surfaces & ink ---------- */
+  color-scheme: light;
+  --bg: var(--paper-100);
+  --surface: var(--paper-50);
+  --surface-2: #f7f5f0;
+  --surface-sunk: var(--paper-200);
+  --ink: var(--ink-900);
+  --ink-2: var(--ink-700);
+  --ink-3: var(--ink-500);
+  --ink-4: var(--ink-400);
+  --rule: var(--paper-300);
+  --rule-strong: var(--paper-400);
+  --rule-ink: var(--ink-900);
+
+  --accent: var(--hivis-600);
+  --accent-mark: var(--hivis-500);
+  --accent-wash: var(--hivis-100);
+  --on-accent: #ffffff;
+
+  /* status — always paired with an icon + label */
+  --good: #0a6b0a;
+  --good-mark: #0ca30c;
+  --good-wash: #e3f1e0;
+  --watch: #8a5a00;
+  --watch-mark: #fab219;
+  --watch-wash: #fbf0d4;
+  --over: #b42318;
+  --over-mark: #d03b3b;
+  --over-wash: #f9e1dd;
+
+  /* ---------- data series (validated: adjacent CVD ΔE ≥ 9.1) ---------- */
+  --s1: #2a78d6; /* equipment */
+  --s2: #eb6834; /* fuel */
+  --s3: #1baf7a; /* labor */
+  --s4: #eda100; /* materials */
+  --s5: #e87ba4; /* maintenance */
+  --s-other: #9a978c;
+  --s-actual: #2a78d6;
+  --s-plan: #8b887e;
+  --grid: #e6e3da;
+  --axis: #c9c5b9;
+
+  /* ---------- type ---------- */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --fs-2xs: 0.6875rem; /* 11 — sheet refs only */
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.8125rem; /* 13 */
+  --fs-md: 0.875rem; /* 14 — tables */
+  --fs-base: 0.9375rem; /* 15 */
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 2.625rem;
+
+  /* ---------- space (dense scale, 4px base) ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  --radius-sm: 3px;
+  --radius: 4px;
+  --sidebar-w: 272px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur: 180ms;
+
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-mark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1012;
+    --surface: #17181b;
+    --surface-2: #1c1d21;
+    --surface-sunk: #0b0c0d;
+    --ink: #f1efe9;
+    --ink-2: #c4c2ba;
+    --ink-3: #9a988f;
+    --ink-4: #75736c;
+    --rule: #2a2b30;
+    --rule-strong: #3b3c42;
+    --rule-ink: #d8d6cf;
+    --accent: #ff8a4c;
+    --accent-mark: #f06a24;
+    --accent-wash: #3a1f12;
+    --on-accent: #16171a;
+    --good: #4cc34c;
+    --good-wash: #13261a;
+    --watch: #f5b93a;
+    --watch-wash: #2d2410;
+    --over: #ff7a70;
+    --over-wash: #34171a;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --s-other: #77756e;
+    --s-actual: #3987e5;
+    --s-plan: #8d8b84;
+    --grid: #25262a;
+    --axis: #3b3c42;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1012;
+  --surface: #17181b;
+  --surface-2: #1c1d21;
+  --surface-sunk: #0b0c0d;
+  --ink: #f1efe9;
+  --ink-2: #c4c2ba;
+  --ink-3: #9a988f;
+  --ink-4: #75736c;
+  --rule: #2a2b30;
+  --rule-strong: #3b3c42;
+  --rule-ink: #d8d6cf;
+  --accent: #ff8a4c;
+  --accent-mark: #f06a24;
+  --accent-wash: #3a1f12;
+  --on-accent: #16171a;
+  --good: #4cc34c;
+  --good-wash: #13261a;
+  --watch: #f5b93a;
+  --watch-wash: #2d2410;
+  --over: #ff7a70;
+  --over-wash: #34171a;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --s5: #d55181;
+  --s-other: #77756e;
+  --s-actual: #3987e5;
+  --s-plan: #8d8b84;
+  --grid: #25262a;
+  --axis: #3b3c42;
+}
