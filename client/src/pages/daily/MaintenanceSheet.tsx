@@ -1,19 +1,46 @@
-import { useState } from 'react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
-import type { MaintenanceKind } from '@/data/types';
+import type { MaintenanceEntry, MaintenanceKind } from '@/data/types';
 import { maintenanceCost, variancePct } from '@/lib/calc';
 import { dayLabel, php } from '@/lib/format';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta } from '@/components/ui/Status';
-import { Field, SelectField } from '@/components/ui/Field';
-import { DayStrip, DeleteButton, EntryForm, n, ok, useActiveDate } from './DailyShell';
+import { num } from '@/components/forms/FormModal';
+import { useRecordCrud, type CrudSpec } from '@/components/forms/useRecordCrud';
+import { DayStrip, useActiveDate } from './DailyShell';
 
 const KINDS: MaintenanceKind[] = ['Preventive', 'Corrective', 'Tires', 'Lubricants', 'Spare parts'];
 
+const SPEC: CrudSpec<MaintenanceEntry> = {
+  kind: 'maintenance',
+  noun: 'work order',
+  fields: [
+    { name: 'unit', label: 'Equipment', placeholder: 'e.g. EX-01 Excavator PC200' },
+    { name: 'kind', label: 'Type', kind: 'select', options: KINDS },
+    { name: 'desc', label: 'Description of work', placeholder: 'e.g. Hydraulic hose & seal repair', full: true },
+    { name: 'parts', label: 'Parts ₱', kind: 'number', step: 100 },
+    { name: 'labor', label: 'Repair labor ₱', kind: 'number', step: 100 },
+  ],
+  defaults: { kind: 'Corrective', labor: '0' },
+  toValues: (r) => ({ unit: r.unit, kind: r.kind, desc: r.description, parts: String(r.parts), labor: String(r.labor) }),
+  fromValues: (v) => ({
+    unit: v.unit.trim(),
+    kind: v.kind as MaintenanceKind,
+    description: v.desc.trim(),
+    parts: num(v.parts),
+    labor: num(v.labor),
+  }),
+  computed: (v) => {
+    const total = num(v.parts) + num(v.labor);
+    return <span className="num">{Number.isFinite(total) ? php(total) : '—'}</span>;
+  },
+  computedLabel: 'Total · parts + labor',
+  describe: (r) => `${r.unit} — ${r.description}`,
+};
+
 export function MaintenanceSheet() {
-  const { records, add, remove } = useProject();
+  const { records } = useProject();
   const date = useActiveDate();
   const rows = records.maintenance.filter((e) => e.date === date);
   const week = records.maintenance;
@@ -23,10 +50,7 @@ export function MaintenanceSheet() {
   const budget = dailyBudget.maintenance;
   const corrective = week.filter((e) => e.kind === 'Corrective').reduce((s, e) => s + maintenanceCost(e), 0);
 
-  const [f, setF] = useState({ unit: '', kind: 'Corrective' as MaintenanceKind, desc: '', parts: '', labor: '0' });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
-  const d = { parts: n(f.parts), labor: n(f.labor) };
-  const valid = f.unit.trim() !== '' && f.desc.trim() !== '' && ok(d.parts, d.labor);
+  const { AddButton, RowActions, modals } = useRecordCrud(SPEC, date);
 
   return (
     <>
@@ -39,23 +63,13 @@ export function MaintenanceSheet() {
         <ReadoutCell label="Work orders this week" value={week.length} meta={`${week.filter((e) => e.kind === 'Corrective').length} corrective`} />
       </Readout>
 
-      <EntryForm
-        title={`Log maintenance for ${dayLabel(date)}`}
-        valid={valid}
-        preview={<span className="num">{php(valid ? d.parts + d.labor : 0)}</span>}
-        onSubmit={() => {
-          add('maintenance', { date, unit: f.unit.trim(), kind: f.kind, description: f.desc.trim(), parts: d.parts, labor: d.labor });
-          setF({ ...f, unit: '', desc: '', parts: '' });
-        }}
+      <Panel
+        refNo="08-A"
+        title="Maintenance & repairs — this week"
+        sub={`Total = parts + labor. Highlighted rows are ${dayLabel(date)}.`}
+        flush
+        actions={<AddButton label="Log work order" />}
       >
-        <Field label="Equipment" value={f.unit} onChange={set('unit')} placeholder="e.g. EX-01" />
-        <SelectField label="Type" options={KINDS} value={f.kind} onChange={set('kind')} />
-        <Field label="Description" value={f.desc} onChange={set('desc')} placeholder="What was done" />
-        <Field label="Parts ₱" numeric value={f.parts} onChange={set('parts')} />
-        <Field label="Repair labor ₱" numeric value={f.labor} onChange={set('labor')} />
-      </EntryForm>
-
-      <Panel refNo="08-A" title="Maintenance & repairs — this week" sub={`Total = parts + labor. Highlighted rows are ${dayLabel(date)}.`} flush>
         <div className="table-wrap">
           <table className="tbl">
             <thead>
@@ -84,8 +98,8 @@ export function MaintenanceSheet() {
                     <td className="r num">{php(e.parts)}</td>
                     <td className="r num">{php(e.labor)}</td>
                     <td className="r num">{php(maintenanceCost(e))}</td>
-                    <td className="r">
-                      <DeleteButton onClick={() => remove('maintenance', e.id)} label={e.description} />
+                    <td>
+                      <RowActions row={e} />
                     </td>
                   </tr>
                 ))}
@@ -109,6 +123,8 @@ export function MaintenanceSheet() {
           </table>
         </div>
       </Panel>
+
+      {modals}
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, CheckCircle2 } from 'lucide-react';
+import { Check, ClipboardList, Pencil } from 'lucide-react';
 import { CAUSE_LIBRARY, CURRENT_WEEK } from '@/data/seed';
 import { CATEGORY_LABEL, CATEGORY_VAR } from '@/data/labels';
 import { DAILY_CATEGORIES, type CostCategory } from '@/data/types';
@@ -8,115 +8,166 @@ import { php } from '@/lib/format';
 import { useMetrics } from '@/lib/metrics';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
+import { Modal } from '@/components/ui/Modal';
 import { Delta, VarianceTag } from '@/components/ui/Status';
 
 const THRESHOLD = 0.05;
 
-function CauseCard({ category, actual, budget }: { category: CostCategory; actual: number; budget: number }) {
+/** The analysis dialog: tick causes, write the corrective action, name an owner. */
+function AnalysisModal({ category, actual, budget, onClose }: { category: CostCategory; actual: number; budget: number; onClose: () => void }) {
   const { notes, saveNote } = useProject();
   const saved = notes[category];
   const [causes, setCauses] = useState<string[]>(saved?.causes ?? []);
   const [action, setAction] = useState(saved?.action ?? '');
   const [owner, setOwner] = useState(saved?.owner ?? '');
-  const [done, setDone] = useState(false);
   const v = variancePct(actual, budget);
-  const dirty =
-    JSON.stringify(causes) !== JSON.stringify(saved?.causes ?? []) || action !== (saved?.action ?? '') || owner !== (saved?.owner ?? '');
-
   const toggle = (c: string) => setCauses((xs) => (xs.includes(c) ? xs.filter((x) => x !== c) : [...xs, c]));
 
   return (
-    <article className="cause-card" aria-labelledby={`cc-${category}`}>
-      <div className="stack" style={{ gap: 8, alignContent: 'start' }}>
-        <div className="row" style={{ gap: 8 }}>
-          <span className="swatch" style={{ background: CATEGORY_VAR[category], margin: 0 }} />
-          <h3 id={`cc-${category}`} style={{ fontSize: 'var(--fs-base)' }}>
-            {CATEGORY_LABEL[category]}
-          </h3>
-        </div>
-        <div className="cause-card__v">
-          <Delta amount={actual - budget} pct={v} format="pct" />
-        </div>
-        <VarianceTag pct={v} showPct={false} />
-        <div className="small muted">
-          {php(actual)} actual
-          <br />
-          {php(budget)} budget
-        </div>
-      </div>
-
-      <fieldset>
-        <legend className="eyebrow">
-          Possible causes
-        </legend>
-        {CAUSE_LIBRARY[category].map((c) => (
-          <label key={c} className="check">
-            <input type="checkbox" checked={causes.includes(c)} onChange={() => toggle(c)} />
-            {c}
-          </label>
-        ))}
-      </fieldset>
-
-      <div className="stack" style={{ gap: 10, alignContent: 'start' }}>
-        <div className="field">
-          <label htmlFor={`act-${category}`}>Corrective action</label>
-          <textarea
-            id={`act-${category}`}
-            className="textarea"
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            placeholder="What will be done, and by when?"
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={`own-${category}`}>Responsible</label>
-          <input id={`own-${category}`} className="input" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. Equipment superintendent" />
-        </div>
-        <div className="row">
+    <Modal
+      title={`${CATEGORY_LABEL[category]} — variance analysis`}
+      sub={`${CURRENT_WEEK} · ${php(actual)} actual against ${php(budget)} budget`}
+      onClose={onClose}
+      footer={
+        <>
+          <span className="small muted">{causes.length} cause{causes.length === 1 ? '' : 's'} selected</span>
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
           <button
-            className="btn btn--primary btn--sm"
-            disabled={!dirty}
+            type="button"
+            className="btn btn--accent"
             onClick={() => {
               saveNote({ category, causes, action, owner });
-              setDone(true);
-              setTimeout(() => setDone(false), 2000);
+              onClose();
             }}
           >
             <Check /> Save analysis
           </button>
-          {done && (
-            <span className="tag tag--under" role="status">
-              <CheckCircle2 /> Saved
-            </span>
-          )}
-          {!done && saved && !dirty && <span className="small muted">Saved · {saved.causes.length} causes</span>}
+        </>
+      }
+    >
+      <div className="modal__body">
+        <div className={`callout ${v > 0 ? 'callout--over' : 'callout--good'}`}>
+          <span className="cause-card__v">
+            <Delta amount={actual - budget} pct={v} format="pct" />
+          </span>
+          <span>
+            {v > 0 ? 'Overrun' : 'Saving'} of <strong>{php(Math.abs(actual - budget))}</strong> against the weekly budget. Record why it happened and what
+            will be done — this carries into the monthly report.
+          </span>
+        </div>
+
+        <fieldset className="cause-fields">
+          <legend className="eyebrow">Possible causes</legend>
+          <div className="cause-grid">
+            {CAUSE_LIBRARY[category].map((c) => (
+              <label key={c} className="check">
+                <input type="checkbox" checked={causes.includes(c)} onChange={() => toggle(c)} />
+                {c}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="field">
+          <label htmlFor="va-action">Corrective action</label>
+          <textarea id="va-action" className="textarea" value={action} onChange={(e) => setAction(e.target.value)} placeholder="What will be done, and by when?" />
+        </div>
+        <div className="field">
+          <label htmlFor="va-owner">Responsible</label>
+          <input id="va-owner" className="input" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. Equipment superintendent" />
         </div>
       </div>
-    </article>
+    </Modal>
   );
 }
 
 export function Variance() {
   const m = useMetrics();
+  const { notes } = useProject();
+  const [open, setOpen] = useState<CostCategory | null>(null);
   const rows = DAILY_CATEGORIES.map((c) => ({ c, a: m.weekTotals[c], b: m.weekBudget[c], v: variancePct(m.weekTotals[c], m.weekBudget[c]) }));
   const significant = rows.filter((r) => Math.abs(r.v) >= THRESHOLD).sort((x, y) => y.v - x.v);
   const within = rows.filter((r) => Math.abs(r.v) < THRESHOLD);
+  const explained = significant.filter((r) => notes[r.c]?.causes.length).length;
 
   return (
     <>
       <div className="callout">
         <span className="mono small">±5%</span>
         <span>
-          Categories whose {CURRENT_WEEK} variance is 5% or more either way need a documented reason. Tick the likely causes, record the corrective action and who
-          owns it. Saved analyses carry into the monthly report.
+          Categories whose {CURRENT_WEEK} variance is 5% or more either way need a documented reason — {explained} of {significant.length} done. Open a category
+          to tick the likely causes and record the corrective action.
         </span>
       </div>
 
-      <div className="stack">
-        {significant.map((r) => (
-          <CauseCard key={r.c} category={r.c} actual={r.a} budget={r.b} />
-        ))}
-      </div>
+      <Panel refNo="14-A" title="Significant variances" sub="Sorted by size of overrun. Analysis is recorded per category." flush>
+        <div className="table-wrap">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Cost category</th>
+                <th className="r">Weekly budget</th>
+                <th className="r">Actual</th>
+                <th className="r">Variance</th>
+                <th>Status</th>
+                <th>Documented causes</th>
+                <th>Corrective action</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {significant.map((r) => {
+                const note = notes[r.c];
+                return (
+                  <tr key={r.c}>
+                    <td>
+                      <span className="swatch" style={{ background: CATEGORY_VAR[r.c] }} />
+                      {CATEGORY_LABEL[r.c]}
+                    </td>
+                    <td className="r num">{php(r.b)}</td>
+                    <td className="r num">{php(r.a)}</td>
+                    <td className="r">
+                      <Delta amount={r.a - r.b} pct={r.v} />
+                    </td>
+                    <td>
+                      <VarianceTag pct={r.v} />
+                    </td>
+                    <td className={note?.causes.length ? undefined : 'muted'}>
+                      {note?.causes.length ? note.causes.join('; ') : 'Not yet analysed'}
+                    </td>
+                    <td className={note?.action ? undefined : 'muted'}>
+                      {note?.action || '—'}
+                      {note?.owner && <span className="cell-sub">{note.owner}</span>}
+                    </td>
+                    <td>
+                      <div className="row-actions no-print">
+                        <button
+                          className={note?.causes.length ? 'btn btn--sm' : 'btn btn--sm btn--accent'}
+                          onClick={() => setOpen(r.c)}
+                          aria-label={`${note?.causes.length ? 'Edit' : 'Record'} analysis for ${CATEGORY_LABEL[r.c]}`}
+                        >
+                          {note?.causes.length ? <Pencil /> : <ClipboardList />}
+                          {note?.causes.length ? 'Edit' : 'Analyse'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {significant.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="empty">
+                    Every category is inside the ±5% band this week.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
 
       <Panel refNo="14-B" title="Within threshold" sub="No explanation required this week" flush>
         <div className="table-wrap">
@@ -146,6 +197,8 @@ export function Variance() {
           </table>
         </div>
       </Panel>
+
+      {open && <AnalysisModal category={open} actual={m.weekTotals[open]} budget={m.weekBudget[open]} onClose={() => setOpen(null)} />}
     </>
   );
 }

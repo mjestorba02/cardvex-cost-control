@@ -1,16 +1,53 @@
-import { useState } from 'react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
+import type { EquipmentEntry } from '@/data/types';
 import { equipmentCost, equipmentHours, equipmentIdleCost, utilization, variancePct } from '@/lib/calc';
 import { dayLabel, pct, php, phpShort, qty } from '@/lib/format';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta } from '@/components/ui/Status';
-import { Field } from '@/components/ui/Field';
-import { DayStrip, DeleteButton, EntryForm, n, ok, useActiveDate } from './DailyShell';
+import { num } from '@/components/forms/FormModal';
+import { useRecordCrud, type CrudSpec } from '@/components/forms/useRecordCrud';
+import { DayStrip, useActiveDate } from './DailyShell';
+
+const SPEC: CrudSpec<EquipmentEntry> = {
+  kind: 'equipment',
+  noun: 'equipment line',
+  fields: [
+    { name: 'unit', label: 'Equipment unit', placeholder: 'e.g. EX-02 Excavator PC200', full: true },
+    { name: 'count', label: 'No. of units', kind: 'number', step: 1, min: 1 },
+    { name: 'rate', label: 'Rental rate ₱/hr', kind: 'number', step: 50 },
+    { name: 'op', label: 'Operating hrs', kind: 'number', step: 0.5, hint: 'Productive hours' },
+    { name: 'sb', label: 'Standby hrs', kind: 'number', step: 0.5, hint: 'On site, not working' },
+    { name: 'idle', label: 'Idle hrs', kind: 'number', step: 0.5, hint: 'Billed but unused' },
+  ],
+  defaults: { count: '1', op: '8', sb: '0', idle: '0' },
+  toValues: (r) => ({
+    unit: r.unit,
+    count: String(r.count),
+    rate: String(r.ratePerHour),
+    op: String(r.operatingHrs),
+    sb: String(r.standbyHrs),
+    idle: String(r.idleHrs),
+  }),
+  fromValues: (v) => ({
+    unit: v.unit.trim(),
+    count: num(v.count),
+    ratePerHour: num(v.rate),
+    operatingHrs: num(v.op),
+    standbyHrs: num(v.sb),
+    idleHrs: num(v.idle),
+  }),
+  computed: (v) => {
+    const total = num(v.count) * num(v.rate) * (num(v.op) + num(v.sb) + num(v.idle));
+    return <span className="num">{Number.isFinite(total) ? php(total) : '—'}</span>;
+  },
+  computedLabel: 'Actual cost · units × rate × hours',
+  describe: (r) => r.unit,
+};
 
 export function EquipmentSheet() {
-  const { records, add, remove } = useProject();
+  const { records } = useProject();
   const date = useActiveDate();
   const rows = records.equipment.filter((e) => e.date === date);
   const totals = WEEK_DATES.map((d) => records.equipment.filter((e) => e.date === d).reduce((s, e) => s + equipmentCost(e), 0));
@@ -21,11 +58,7 @@ export function EquipmentSheet() {
   const acc = records.accomplishment.find((a) => a.date === date);
   const budget = dailyBudget.equipment;
 
-  const [f, setF] = useState({ unit: '', count: '1', rate: '', op: '8', sb: '0', idle: '0' });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-  const draft = { count: n(f.count), rate: n(f.rate), op: n(f.op), sb: n(f.sb), idle: n(f.idle) };
-  const valid = f.unit.trim() !== '' && ok(draft.count, draft.rate, draft.op, draft.sb, draft.idle);
-  const draftCost = valid ? draft.count * draft.rate * (draft.op + draft.sb + draft.idle) : 0;
+  const { AddButton, RowActions, modals } = useRecordCrud(SPEC, date);
 
   // Week view per unit
   const units = Array.from(new Set(records.equipment.map((e) => e.unit)));
@@ -42,24 +75,13 @@ export function EquipmentSheet() {
         <ReadoutCell label="Productivity" value={opHrs ? `${qty((acc?.actual ?? 0) / opHrs)} m³/hr` : '—'} meta="per operating unit-hour" />
       </Readout>
 
-      <EntryForm
-        title={`Add equipment for ${dayLabel(date)}`}
-        valid={valid}
-        preview={<span className="num">{php(draftCost)}</span>}
-        onSubmit={() => {
-          add('equipment', { date, unit: f.unit.trim(), count: draft.count, ratePerHour: draft.rate, operatingHrs: draft.op, standbyHrs: draft.sb, idleHrs: draft.idle });
-          setF({ ...f, unit: '', rate: '' });
-        }}
+      <Panel
+        refNo="04-A"
+        title={`Equipment log — ${dayLabel(date)}`}
+        sub="Actual cost = units × rate × (operating + standby + idle hrs)"
+        flush
+        actions={<AddButton label="Add equipment" />}
       >
-        <Field label="Equipment unit" placeholder="e.g. EX-02 Excavator" value={f.unit} onChange={set('unit')} required />
-        <Field label="No. of units" numeric value={f.count} onChange={set('count')} />
-        <Field label="Rental rate ₱/hr" numeric value={f.rate} onChange={set('rate')} required />
-        <Field label="Operating hrs" numeric value={f.op} onChange={set('op')} />
-        <Field label="Standby hrs" numeric value={f.sb} onChange={set('sb')} />
-        <Field label="Idle hrs" numeric value={f.idle} onChange={set('idle')} />
-      </EntryForm>
-
-      <Panel refNo="04-A" title={`Equipment log — ${dayLabel(date)}`} sub="Actual cost = units × rate × (operating + standby + idle hrs)" flush>
         <div className="table-wrap">
           <table className="tbl">
             <thead>
@@ -86,8 +108,8 @@ export function EquipmentSheet() {
                   <td className={`r num ${e.idleHrs >= 1.5 ? 'delta--watch' : ''}`}>{qty(e.idleHrs)} h</td>
                   <td className="r num">{pct(utilization(e), 0)}</td>
                   <td className="r num">{php(equipmentCost(e))}</td>
-                  <td className="r">
-                    <DeleteButton onClick={() => remove('equipment', e.id)} label={e.unit} />
+                  <td>
+                    <RowActions row={e} />
                   </td>
                 </tr>
               ))}
@@ -149,6 +171,8 @@ export function EquipmentSheet() {
           </table>
         </div>
       </Panel>
+
+      {modals}
     </>
   );
 }

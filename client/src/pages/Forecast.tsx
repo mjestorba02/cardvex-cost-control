@@ -1,16 +1,19 @@
-import { RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, RotateCcw } from 'lucide-react';
 import { CATEGORY_LABEL, CATEGORY_VAR } from '@/data/labels';
-import { CATEGORIES } from '@/data/types';
+import { CATEGORIES, type CostCategory } from '@/data/types';
 import { pct, php, phpShort } from '@/lib/format';
 import { BUDGET_BY_CAT, TOTAL_BUDGET, useMetrics } from '@/lib/metrics';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta, VarianceTag } from '@/components/ui/Status';
+import { FormModal, num } from '@/components/forms/FormModal';
 
 export function Forecast() {
   const m = useMetrics();
   const { etc, setEtc } = useProject();
+  const [editing, setEditing] = useState<CostCategory | null>(null);
   const overrides = Object.keys(etc).length;
 
   // Alternative methods for comparison
@@ -83,22 +86,21 @@ export function Forecast() {
                     <td className="r num">{php(BUDGET_BY_CAT[c])}</td>
                     <td className="r num">{php(m.actualByCat[c])}</td>
                     <td className="r">
-                      <div className="row" style={{ gap: 4, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-                        <input
-                          className="input input--num"
-                          style={{ maxWidth: 150, minHeight: 32, ...(overridden ? { borderColor: 'var(--accent-mark)' } : {}) }}
-                          type="number"
-                          step={10000}
-                          min={0}
-                          aria-label={`Estimated cost to complete, ${CATEGORY_LABEL[c]}`}
-                          value={Math.round(m.etcUsed[c])}
-                          onChange={(e) => setEtc(c, e.target.value === '' ? null : Math.max(0, Number(e.target.value)))}
-                        />
+                      <div className="row" style={{ gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                        <span className="num">{php(m.etcUsed[c])}</span>
                         {overridden && (
-                          <button className="btn btn--icon btn--sm btn--ghost" onClick={() => setEtc(c, null)} aria-label={`Reset ${CATEGORY_LABEL[c]} to calculated estimate`} title={`Reset to ${php(m.etcDefault[c])}`}>
-                            <RotateCcw />
-                          </button>
+                          <span className="tag tag--watch" title={`Calculated estimate is ${php(m.etcDefault[c])}`}>
+                            Overridden
+                          </span>
                         )}
+                        <button
+                          className="btn btn--icon btn--sm"
+                          onClick={() => setEditing(c)}
+                          aria-label={`Adjust estimated cost to complete for ${CATEGORY_LABEL[c]}`}
+                          title="Adjust estimate"
+                        >
+                          <Pencil />
+                        </button>
                       </div>
                     </td>
                     <td className="r num">{php(final)}</td>
@@ -176,6 +178,38 @@ export function Forecast() {
           </table>
         </div>
       </Panel>
+
+      {editing && (
+        <FormModal
+          title={`Cost to complete — ${CATEGORY_LABEL[editing]}`}
+          sub={`Budget ${php(BUDGET_BY_CAT[editing])} · spent ${php(m.actualByCat[editing])} to date`}
+          fields={[
+            {
+              name: 'etc',
+              label: 'Estimated cost to complete ₱',
+              kind: 'number',
+              step: 10000,
+              full: true,
+              hint: `Performance method calculates ${php(m.etcDefault[editing])} — override it with the site's own estimate.`,
+            },
+          ]}
+          initial={{ etc: String(Math.round(m.etcUsed[editing])) }}
+          computed={(v) => {
+            const final = m.actualByCat[editing] + num(v.etc);
+            const fv = BUDGET_BY_CAT[editing] - final;
+            if (!Number.isFinite(final)) return <span className="num">—</span>;
+            return (
+              <span className="num">
+                {php(final)} <span className="muted">forecast final ·</span> <Delta amount={-fv} pct={-fv / BUDGET_BY_CAT[editing]} />
+              </span>
+            );
+          }}
+          computedLabel="Forecast final · actual + estimate"
+          submitLabel="Save estimate"
+          onSubmit={(v) => setEtc(editing, Math.max(0, num(v.etc)))}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </>
   );
 }

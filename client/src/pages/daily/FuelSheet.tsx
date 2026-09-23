@@ -1,17 +1,57 @@
-import { useState } from 'react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
+import type { FuelEntry } from '@/data/types';
 import { fuelCost, litersPerHour, variancePct } from '@/lib/calc';
 import { dayLabel, php, qty } from '@/lib/format';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta } from '@/components/ui/Status';
-import { Field } from '@/components/ui/Field';
+import { num } from '@/components/forms/FormModal';
+import { useRecordCrud, type CrudSpec } from '@/components/forms/useRecordCrud';
 import { LineChart } from '@/components/charts/LineChart';
-import { DayStrip, DeleteButton, EntryForm, n, ok, useActiveDate } from './DailyShell';
+import { DayStrip, useActiveDate } from './DailyShell';
+
+const SPEC: CrudSpec<FuelEntry> = {
+  kind: 'fuel',
+  noun: 'fuel issue',
+  fields: [
+    { name: 'unit', label: 'Equipment unit', placeholder: 'e.g. EX-01 Excavator PC200', full: true },
+    { name: 'meter', label: 'Hour meter reading', kind: 'number', step: 1 },
+    { name: 'liters', label: 'Liters issued', kind: 'number', step: 1 },
+    { name: 'price', label: 'Diesel ₱/L', kind: 'number', step: 0.5 },
+    { name: 'hrs', label: 'Hours run', kind: 'number', step: 0.5, hint: 'Unit-hours this fuel covered' },
+  ],
+  defaults: { price: '67', hrs: '8' },
+  toValues: (r) => ({
+    unit: r.unit,
+    meter: String(r.hourMeter),
+    liters: String(r.liters),
+    price: String(r.pricePerLiter),
+    hrs: String(r.hoursRun),
+  }),
+  fromValues: (v) => ({
+    unit: v.unit.trim(),
+    hourMeter: num(v.meter),
+    liters: num(v.liters),
+    pricePerLiter: num(v.price),
+    hoursRun: num(v.hrs),
+  }),
+  computed: (v) => {
+    const cost = num(v.liters) * num(v.price);
+    const lph = num(v.liters) / num(v.hrs);
+    return (
+      <span className="num">
+        {Number.isFinite(cost) ? php(cost) : '—'}
+        {Number.isFinite(lph) && <span className="muted"> · {qty(lph)} L/hr</span>}
+      </span>
+    );
+  },
+  computedLabel: 'Fuel cost · liters × price',
+  describe: (r) => `${r.unit} — ${r.liters} L`,
+};
 
 export function FuelSheet() {
-  const { records, add, remove } = useProject();
+  const { records } = useProject();
   const date = useActiveDate();
   const rows = records.fuel.filter((e) => e.date === date);
   const totals = WEEK_DATES.map((d) => records.fuel.filter((e) => e.date === d).reduce((s, e) => s + fuelCost(e), 0));
@@ -22,10 +62,7 @@ export function FuelSheet() {
   const acc = records.accomplishment.find((a) => a.date === date);
   const budget = dailyBudget.fuel;
 
-  const [f, setF] = useState({ unit: '', meter: '', liters: '', price: String(price || 65), hrs: '8' });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-  const d = { meter: n(f.meter), liters: n(f.liters), price: n(f.price), hrs: n(f.hrs) };
-  const valid = f.unit.trim() !== '' && ok(d.meter, d.liters, d.price, d.hrs);
+  const { AddButton, RowActions, modals } = useRecordCrud({ ...SPEC, defaults: { price: String(price || 67), hrs: '8' } }, date);
 
   const weekLph = WEEK_DATES.map((day) => {
     const r = records.fuel.filter((e) => e.date === day);
@@ -48,28 +85,13 @@ export function FuelSheet() {
 
       <div className="grid grid--main-side">
         <div className="stack">
-          <EntryForm
-            title={`Add fuel issue for ${dayLabel(date)}`}
-            valid={valid}
-            preview={
-              <span className="num">
-                {php(valid ? d.liters * d.price : 0)}
-                {valid && d.hrs > 0 && <span className="muted"> · {qty(d.liters / d.hrs)} L/hr</span>}
-              </span>
-            }
-            onSubmit={() => {
-              add('fuel', { date, unit: f.unit.trim(), hourMeter: d.meter, liters: d.liters, pricePerLiter: d.price, hoursRun: d.hrs });
-              setF({ ...f, unit: '', meter: '', liters: '' });
-            }}
+          <Panel
+            refNo="05-A"
+            title={`Fuel log — ${dayLabel(date)}`}
+            sub="Fuel cost = liters × diesel price"
+            flush
+            actions={<AddButton label="Add fuel issue" />}
           >
-            <Field label="Equipment unit" value={f.unit} onChange={set('unit')} placeholder="e.g. EX-01" />
-            <Field label="Hour meter" numeric value={f.meter} onChange={set('meter')} />
-            <Field label="Liters" numeric value={f.liters} onChange={set('liters')} />
-            <Field label="Diesel ₱/L" numeric value={f.price} onChange={set('price')} />
-            <Field label="Hours run" numeric value={f.hrs} onChange={set('hrs')} />
-          </EntryForm>
-
-          <Panel refNo="05-A" title={`Fuel log — ${dayLabel(date)}`} sub="Fuel cost = liters × diesel price" flush>
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
@@ -92,8 +114,8 @@ export function FuelSheet() {
                       <td className="r num">{php(e.pricePerLiter)}</td>
                       <td className="r num">{qty(litersPerHour(e))}</td>
                       <td className="r num">{php(fuelCost(e))}</td>
-                      <td className="r">
-                        <DeleteButton onClick={() => remove('fuel', e.id)} label={e.unit} />
+                      <td>
+                        <RowActions row={e} />
                       </td>
                     </tr>
                   ))}
@@ -147,6 +169,8 @@ export function FuelSheet() {
           </Panel>
         </div>
       </div>
+
+      {modals}
     </>
   );
 }

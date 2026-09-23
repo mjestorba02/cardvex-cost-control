@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, CalendarRange } from 'lucide-react';
+import { CalendarDays, CalendarRange, Pencil } from 'lucide-react';
 import { ACTIVITY_BOQ, boq, CURRENT_WEEK, production, WEEK_DATES, weeklyQtyHistory } from '@/data/seed';
 import type { AccomplishmentEntry } from '@/data/types';
 import { alignment, severity } from '@/lib/calc';
@@ -10,6 +10,7 @@ import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { AlignmentTag } from '@/components/ui/Status';
+import { FormModal, num } from '@/components/forms/FormModal';
 import { StackedBars } from '@/components/charts/StackedBars';
 import { useActiveDate } from './daily/DailyShell';
 
@@ -68,6 +69,7 @@ function DailyView() {
   const { records, setAccomplishment, setDate } = useProject();
   const m = useMetrics();
   const date = useActiveDate();
+  const [editing, setEditing] = useState<AccomplishmentEntry | null>(null);
   const rows = records.accomplishment.filter((a) => a.date === date);
   const w = weighted(rows);
   const exc = rows.find((r) => r.activity === 'Excavation');
@@ -115,12 +117,13 @@ function DailyView() {
                 <th className="r">Variance</th>
                 <th>Status</th>
                 <th className="r">Value of work</th>
-                <th style={{ minWidth: 200 }}>Remarks</th>
+                <th style={{ minWidth: 160 }}>Remarks</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <DailyRow key={r.activity} r={r} onChange={(patch) => setAccomplishment(date, r.activity, patch)} />
+                <DailyRow key={r.activity} r={r} onEdit={() => setEditing(r)} />
               ))}
             </tbody>
             <tfoot>
@@ -130,7 +133,7 @@ function DailyView() {
                   <QtyTag actual={w.ev} planned={w.pv} />
                 </td>
                 <td className="r num">{php(w.ev)}</td>
-                <td />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           </table>
@@ -171,32 +174,52 @@ function DailyView() {
           })}
         </div>
       </Panel>
+
+      {editing && (
+        <FormModal
+          title={`Edit accomplishment — ${editing.activity}`}
+          sub={`${fullDate(date)} · planned ${qty(editing.planned)} ${editing.unit}`}
+          fields={[
+            { name: 'actual', label: `Actual quantity (${editing.unit})`, kind: 'number', step: 1, full: true, hint: 'From the day’s survey or foreman’s report' },
+            { name: 'remarks', label: 'Remarks', kind: 'textarea', optional: true, full: true, placeholder: 'Reason for any shortfall — rain, breakdown, access…' },
+          ]}
+          initial={{ actual: String(editing.actual), remarks: editing.remarks ?? '' }}
+          computed={(v) => {
+            const q = num(v.actual);
+            if (!Number.isFinite(q)) return <span className="num">—</span>;
+            return (
+              <span className="num">
+                {php(q * UNIT_COST[editing.activity])}
+                <span className="muted"> · {pct(q / editing.planned, 0)} of plan</span>
+              </span>
+            );
+          }}
+          computedLabel="Value of work · qty × BOQ rate"
+          submitLabel="Save accomplishment"
+          onSubmit={(v) => setAccomplishment(date, editing.activity, { actual: Math.max(0, num(v.actual)), remarks: v.remarks.trim() || undefined })}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </>
   );
 }
 
-function DailyRow({ r, onChange }: { r: AccomplishmentEntry; onChange: (p: { actual?: number; remarks?: string }) => void }) {
+function DailyRow({ r, onEdit }: { r: AccomplishmentEntry; onEdit: () => void }) {
   const diff = r.actual - r.planned;
   const sev = severity(shortfall(r.actual, r.planned));
   return (
     <tr>
       <td>
         {r.activity}
-        <span className="cell-sub">{php(UNIT_COST[r.activity])} / {r.unit}</span>
+        <span className="cell-sub">
+          {php(UNIT_COST[r.activity])} / {r.unit}
+        </span>
       </td>
       <td className="r num">
         {qty(r.planned)} {r.unit}
       </td>
-      <td className="r">
-        <input
-          className="input input--num"
-          style={{ maxWidth: 110, minHeight: 32 }}
-          type="number"
-          min={0}
-          aria-label={`Actual ${r.activity}, ${r.unit}`}
-          value={r.actual}
-          onChange={(e) => onChange({ actual: Math.max(0, Number(e.target.value) || 0) })}
-        />
+      <td className="r num">
+        {qty(r.actual)} {r.unit}
       </td>
       <td className={`r num delta--${sev}`}>
         {diff > 0 ? '+' : diff < 0 ? '−' : ''}
@@ -206,15 +229,13 @@ function DailyRow({ r, onChange }: { r: AccomplishmentEntry; onChange: (p: { act
         <QtyTag actual={r.actual} planned={r.planned} />
       </td>
       <td className="r num">{php(r.actual * UNIT_COST[r.activity])}</td>
+      <td className={r.remarks ? undefined : 'muted'}>{r.remarks || '—'}</td>
       <td>
-        <input
-          className="input"
-          style={{ minHeight: 32 }}
-          aria-label={`Remarks for ${r.activity}`}
-          placeholder={sev === 'over' || sev === 'watch' ? 'Why short? e.g. rain, breakdown' : 'Optional'}
-          value={r.remarks ?? ''}
-          onChange={(e) => onChange({ remarks: e.target.value })}
-        />
+        <div className="row-actions no-print">
+          <button className="btn btn--icon btn--sm" onClick={onEdit} aria-label={`Edit ${r.activity} accomplishment`} title="Edit">
+            <Pencil />
+          </button>
+        </div>
       </td>
     </tr>
   );

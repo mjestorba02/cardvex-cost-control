@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
 import { CATEGORY_LABEL, CATEGORY_SHORT, CATEGORY_VAR } from '@/data/labels';
 import { DAILY_CATEGORIES } from '@/data/types';
@@ -8,6 +10,7 @@ import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta, VarianceTag } from '@/components/ui/Status';
+import { FormModal, num } from '@/components/forms/FormModal';
 import { Waterfall } from '@/components/charts/Waterfall';
 import { StackedBars } from '@/components/charts/StackedBars';
 import { Legend } from '@/components/charts/core';
@@ -16,6 +19,7 @@ import { useActiveDate } from './daily/DailyShell';
 export function DailySummary() {
   const m = useMetrics();
   const { setDate, setAccomplishment } = useProject();
+  const [editing, setEditing] = useState(false);
   const date = useActiveDate();
   const idx = WEEK_DATES.indexOf(date);
   const day = m.days[idx];
@@ -70,22 +74,25 @@ export function DailySummary() {
         </Panel>
 
         <div className="stack">
-          <Panel refNo="09-C" title="Accomplishment" sub="Record the day's physical output to get cost per unit">
+          <Panel
+            refNo="09-C"
+            title="Accomplishment"
+            sub="The day's physical output drives cost per unit"
+            actions={
+              <button className="btn btn--sm no-print" onClick={() => setEditing(true)}>
+                <Pencil /> Update
+              </button>
+            }
+          >
             <div className="stack">
-              <div className="field">
-                <label htmlFor="acc-actual">Actual excavation, m³</label>
-                <input
-                  id="acc-actual"
-                  className="input input--num"
-                  type="number"
-                  min={0}
-                  value={day.actual}
-                  onChange={(e) => setAccomplishment(date, 'Excavation', { actual: Math.max(0, Number(e.target.value) || 0) })}
-                />
-                <span className="hint">
-                  Planned {qty(day.planned)} m³ · {day.planned ? Math.round((day.actual / day.planned) * 100) : 0}% achieved
-                </span>
-              </div>
+              <dl className="dl">
+                <dt>Actual excavation</dt>
+                <dd>{qty(day.actual)} m³</dd>
+                <dt>Planned</dt>
+                <dd>{qty(day.planned)} m³</dd>
+                <dt className="total">Achieved</dt>
+                <dd className="total">{day.planned ? Math.round((day.actual / day.planned) * 100) : 0}%</dd>
+              </dl>
               <div className="formula">
                 <b>Cost/m³</b> = {php(day.total)} ÷ {qty(day.actual)} m³ = <b>{cpu ? php(cpu) : '—'}</b>
               </div>
@@ -157,6 +164,23 @@ export function DailySummary() {
           </table>
         </div>
       </Panel>
+
+      {editing && (
+        <FormModal
+          title="Update accomplishment"
+          sub={`${fullDate(date)} · planned ${qty(day.planned)} m³`}
+          fields={[{ name: 'actual', label: 'Actual excavation (m³)', kind: 'number', step: 1, full: true, hint: 'From the day’s survey' }]}
+          initial={{ actual: String(day.actual) }}
+          computed={(v) => {
+            const q = num(v.actual);
+            return <span className="num">{q > 0 ? `${php(day.total / q)} / m³` : '—'}</span>;
+          }}
+          computedLabel="Cost per m³ · day cost ÷ quantity"
+          submitLabel="Save accomplishment"
+          onSubmit={(v) => setAccomplishment(date, 'Excavation', { actual: Math.max(0, num(v.actual)) })}
+          onClose={() => setEditing(false)}
+        />
+      )}
     </>
   );
 }

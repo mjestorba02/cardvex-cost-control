@@ -16,6 +16,7 @@ interface State {
 
 type Action =
   | { type: 'add'; kind: RecordKind; entry: EntryOf<RecordKind> }
+  | { type: 'update'; kind: RecordKind; id: string; patch: Record<string, unknown> }
   | { type: 'remove'; kind: RecordKind; id: string }
   | { type: 'accomplishment'; date: string; activity: string; patch: AccPatch }
   | { type: 'note'; note: VarianceNote }
@@ -43,6 +44,14 @@ function reducer(s: State, a: Action): State {
       return {
         ...s,
         records: { ...s.records, [a.kind]: [...(s.records[a.kind] as EntryOf<RecordKind>[]), a.entry] },
+      };
+    case 'update':
+      return {
+        ...s,
+        records: {
+          ...s.records,
+          [a.kind]: (s.records[a.kind] as { id: string }[]).map((e) => (e.id === a.id ? { ...e, ...a.patch } : e)),
+        },
       };
     case 'remove':
       return {
@@ -79,6 +88,7 @@ function reducer(s: State, a: Action): State {
 
 interface Ctx extends State {
   add: <K extends RecordKind>(kind: K, entry: Omit<EntryOf<K>, 'id'>) => void;
+  update: (kind: RecordKind, id: string, patch: Record<string, unknown>) => void;
   remove: (kind: RecordKind, id: string) => void;
   setAccomplishment: (date: string, activity: string, patch: AccPatch) => void;
   saveNote: (note: VarianceNote) => void;
@@ -109,6 +119,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       add,
+      update: (kind, id, patch) => dispatch({ type: 'update', kind, id, patch }),
       remove: (kind, id) => dispatch({ type: 'remove', kind, id }),
       setAccomplishment: (date, activity, patch) => dispatch({ type: 'accomplishment', date, activity, patch }),
       saveNote: (note) => dispatch({ type: 'note', note }),

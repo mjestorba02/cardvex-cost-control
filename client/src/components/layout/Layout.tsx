@@ -8,7 +8,10 @@ import { fullDate } from '@/lib/format';
 import { useMetrics } from '@/lib/metrics';
 import { GROUPS, SHEETS, sheetByPath } from '@/lib/sheets';
 import { useProject } from '@/store/ProjectStore';
-import { Mark } from '../ui/Mark';
+
+/** The wordmark is inked black or white, so the lockup follows the active theme. */
+const LOGO_BLACK = '/brand/asdec-logo-black.png';
+const LOGO_WHITE = '/brand/asdec-logo-white.png';
 
 type Theme = 'light' | 'dark';
 
@@ -40,10 +43,11 @@ export function Layout() {
   const [theme, toggleTheme] = useTheme();
   const { reset } = useProject();
   const m = useMetrics();
+  const logo = theme === 'dark' ? LOGO_WHITE : LOGO_BLACK;
 
   useEffect(() => {
     setOpen(false);
-    document.title = `${sheet.no} ${sheet.nav} · CARDVEX Cost Control`;
+    document.title = `${sheet.no} ${sheet.nav} · ASDEC Cost Control`;
     window.scrollTo({ top: 0 });
   }, [pathname, sheet]);
 
@@ -62,19 +66,23 @@ export function Layout() {
       </a>
 
       <aside className="sidebar" data-open={open} aria-label="Sheet index">
-        <div className="row" style={{ justifyContent: 'space-between', paddingRight: 8 }}>
+        <div className="row" style={{ justifyContent: 'space-between', paddingRight: 8, flexWrap: 'nowrap' }}>
           <Link to="/" className="brand">
-            <Mark className="brand__mark" />
-            <div>
-              <div className="brand__name">CARDVEX</div>
-              <div className="brand__sub">Cost Control · {contract.contractNo}</div>
-            </div>
+            <span className="brand__plate">
+              <img className="brand__logo" src={logo} alt="ASDEC Builders Corporation" width={2170} height={725} />
+            </span>
+            <span className="brand__sub">COST CONTROL · {contract.contractNo}</span>
           </Link>
           {open && (
             <button className="btn btn--icon btn--ghost" onClick={() => setOpen(false)} aria-label="Close menu">
               <X />
             </button>
           )}
+        </div>
+        <div className="keyline" aria-hidden="true">
+          <i />
+          <i />
+          <i />
         </div>
 
         <nav className="sheet-nav">
@@ -142,14 +150,18 @@ export function Layout() {
           <button className="btn btn--icon" onClick={() => setOpen(true)} aria-label="Open sheet index" aria-expanded={open}>
             <Menu />
           </button>
-          <Mark className="brand__mark" />
-          <span className="brand__name">CARDVEX</span>
+          <img src={logo} alt="ASDEC Builders Corporation" style={{ height: 22, width: 'auto' }} />
           <span className="spacer" />
           <span className="mono small muted">
             Sheet {sheet.no}/16
           </span>
         </div>
 
+        <div className="keyline" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
         <header className="titleblock">
           <div className="titleblock__title">
             <div className="titleblock__crumb">

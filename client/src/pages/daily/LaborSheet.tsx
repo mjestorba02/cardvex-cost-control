@@ -1,16 +1,62 @@
-import { useState } from 'react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
+import type { LaborEntry } from '@/data/types';
 import { laborAllowance, laborCost, laborOvertime, laborRegular, variancePct } from '@/lib/calc';
 import { dayLabel, php, qty } from '@/lib/format';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta } from '@/components/ui/Status';
-import { Field } from '@/components/ui/Field';
-import { DayStrip, DeleteButton, EntryForm, n, ok, useActiveDate } from './DailyShell';
+import { num } from '@/components/forms/FormModal';
+import { useRecordCrud, type CrudSpec } from '@/components/forms/useRecordCrud';
+import { DayStrip, useActiveDate } from './DailyShell';
+
+const SPEC: CrudSpec<LaborEntry> = {
+  kind: 'labor',
+  noun: 'manpower line',
+  fields: [
+    { name: 'position', label: 'Position', placeholder: 'e.g. Equipment operator', full: true },
+    { name: 'heads', label: 'No. of workers', kind: 'number', step: 1, min: 1 },
+    { name: 'rate', label: 'Daily rate ₱', kind: 'number', step: 50 },
+    { name: 'days', label: 'Days', kind: 'number', step: 0.5 },
+    { name: 'ot', label: 'OT hrs per worker', kind: 'number', step: 0.5, hint: 'Paid at 125% hourly' },
+    { name: 'allow', label: 'Allowance ₱ per worker', kind: 'number', step: 50, hint: 'Meal / transport' },
+  ],
+  defaults: { days: '1', ot: '0', allow: '0' },
+  toValues: (r) => ({
+    position: r.position,
+    heads: String(r.headcount),
+    rate: String(r.dailyRate),
+    days: String(r.days),
+    ot: String(r.overtimeHrs),
+    allow: String(r.allowance),
+  }),
+  fromValues: (v) => ({
+    position: v.position.trim(),
+    headcount: num(v.heads),
+    dailyRate: num(v.rate),
+    days: num(v.days),
+    overtimeHrs: num(v.ot),
+    allowance: num(v.allow),
+  }),
+  computed: (v) => {
+    const total = laborCost({
+      id: '',
+      date: '',
+      position: '',
+      headcount: num(v.heads),
+      dailyRate: num(v.rate),
+      days: num(v.days),
+      overtimeHrs: num(v.ot),
+      allowance: num(v.allow),
+    });
+    return <span className="num">{Number.isFinite(total) ? php(total) : '—'}</span>;
+  },
+  computedLabel: 'Actual cost · regular + OT + allowance',
+  describe: (r) => `${r.headcount} × ${r.position}`,
+};
 
 export function LaborSheet() {
-  const { records, add, remove } = useProject();
+  const { records } = useProject();
   const date = useActiveDate();
   const rows = records.labor.filter((e) => e.date === date);
   const totals = WEEK_DATES.map((d) => records.labor.filter((e) => e.date === d).reduce((s, e) => s + laborCost(e), 0));
@@ -21,11 +67,7 @@ export function LaborSheet() {
   const acc = records.accomplishment.find((a) => a.date === date);
   const budget = dailyBudget.labor;
 
-  const [f, setF] = useState({ position: '', heads: '', rate: '', days: '1', ot: '0', allow: '0' });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-  const d = { heads: n(f.heads), rate: n(f.rate), days: n(f.days), ot: n(f.ot), allow: n(f.allow) };
-  const valid = f.position.trim() !== '' && ok(d.heads, d.rate, d.days, d.ot, d.allow);
-  const draft = { headcount: d.heads, dailyRate: d.rate, days: d.days, overtimeHrs: d.ot, allowance: d.allow };
+  const { AddButton, RowActions, modals } = useRecordCrud(SPEC, date);
 
   return (
     <>
@@ -39,24 +81,13 @@ export function LaborSheet() {
         <ReadoutCell label="Labor cost / m³" value={acc?.actual ? php(dayTotal / acc.actual) : '—'} meta={acc ? `${qty(acc.actual)} m³ excavated` : ''} />
       </Readout>
 
-      <EntryForm
-        title={`Add manpower for ${dayLabel(date)}`}
-        valid={valid}
-        preview={<span className="num">{php(valid ? laborCost({ ...draft, id: '', date, position: '' }) : 0)}</span>}
-        onSubmit={() => {
-          add('labor', { date, position: f.position.trim(), ...draft });
-          setF({ ...f, position: '', heads: '', rate: '' });
-        }}
+      <Panel
+        refNo="06-A"
+        title={`Manpower — ${dayLabel(date)}`}
+        sub="Actual cost = workers × daily rate × days + overtime + allowances"
+        flush
+        actions={<AddButton label="Add manpower" />}
       >
-        <Field label="Position" value={f.position} onChange={set('position')} placeholder="e.g. Operator" />
-        <Field label="No. of workers" numeric value={f.heads} onChange={set('heads')} />
-        <Field label="Daily rate ₱" numeric value={f.rate} onChange={set('rate')} />
-        <Field label="Days" numeric value={f.days} onChange={set('days')} />
-        <Field label="OT hrs / worker" numeric value={f.ot} onChange={set('ot')} />
-        <Field label="Allowance ₱ / worker" numeric value={f.allow} onChange={set('allow')} />
-      </EntryForm>
-
-      <Panel refNo="06-A" title={`Manpower — ${dayLabel(date)}`} sub="Actual cost = workers × daily rate × days + overtime + allowances" flush>
         <div className="table-wrap">
           <table className="tbl">
             <thead>
@@ -83,8 +114,8 @@ export function LaborSheet() {
                   <td className="r num">{laborOvertime(e) ? php(laborOvertime(e)) : <span className="muted">—</span>}</td>
                   <td className="r num">{laborAllowance(e) ? php(laborAllowance(e)) : <span className="muted">—</span>}</td>
                   <td className="r num">{php(laborCost(e))}</td>
-                  <td className="r">
-                    <DeleteButton onClick={() => remove('labor', e.id)} label={e.position} />
+                  <td>
+                    <RowActions row={e} />
                   </td>
                 </tr>
               ))}
@@ -112,6 +143,8 @@ export function LaborSheet() {
           </table>
         </div>
       </Panel>
+
+      {modals}
     </>
   );
 }

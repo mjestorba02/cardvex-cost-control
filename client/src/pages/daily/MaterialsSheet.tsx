@@ -1,16 +1,53 @@
-import { useState } from 'react';
 import { WEEK_DATES, dailyBudget } from '@/data/seed';
+import type { MaterialEntry } from '@/data/types';
 import { materialConsumedValue, materialCost, variancePct } from '@/lib/calc';
 import { dayLabel, pct, php, qty } from '@/lib/format';
 import { useProject } from '@/store/ProjectStore';
 import { Panel } from '@/components/ui/Panel';
 import { Readout, ReadoutCell } from '@/components/ui/Readout';
 import { Delta } from '@/components/ui/Status';
-import { Field } from '@/components/ui/Field';
-import { DayStrip, DeleteButton, EntryForm, n, ok, useActiveDate } from './DailyShell';
+import { num } from '@/components/forms/FormModal';
+import { useRecordCrud, type CrudSpec } from '@/components/forms/useRecordCrud';
+import { DayStrip, useActiveDate } from './DailyShell';
+
+const SPEC: CrudSpec<MaterialEntry> = {
+  kind: 'materials',
+  noun: 'material record',
+  fields: [
+    { name: 'material', label: 'Material', placeholder: 'e.g. Gravel (subbase)', full: true },
+    { name: 'unit', label: 'Unit', placeholder: 'm³, bags, pcs' },
+    { name: 'cost', label: 'Unit cost ₱', kind: 'number', step: 10 },
+    { name: 'delivered', label: 'Qty delivered', kind: 'number', step: 1, hint: 'Cost is booked on delivery' },
+    { name: 'consumed', label: 'Qty consumed', kind: 'number', step: 1, hint: 'Placed into the works' },
+    { name: 'waste', label: 'Wastage qty', kind: 'number', step: 1 },
+  ],
+  defaults: { unit: 'm³', consumed: '0', waste: '0' },
+  toValues: (r) => ({
+    material: r.material,
+    unit: r.unit,
+    cost: String(r.unitCost),
+    delivered: String(r.delivered),
+    consumed: String(r.consumed),
+    waste: String(r.wastage),
+  }),
+  fromValues: (v) => ({
+    material: v.material.trim(),
+    unit: v.unit.trim(),
+    unitCost: num(v.cost),
+    delivered: num(v.delivered),
+    consumed: num(v.consumed),
+    wastage: num(v.waste),
+  }),
+  computed: (v) => {
+    const total = num(v.delivered) * num(v.cost);
+    return <span className="num">{Number.isFinite(total) ? php(total) : '—'}</span>;
+  },
+  computedLabel: 'Actual cost · delivered × unit cost',
+  describe: (r) => `${r.material} — ${r.delivered} ${r.unit}`,
+};
 
 export function MaterialsSheet() {
-  const { records, add, remove } = useProject();
+  const { records } = useProject();
   const date = useActiveDate();
   const rows = records.materials.filter((e) => e.date === date);
   const totals = WEEK_DATES.map((d) => records.materials.filter((e) => e.date === d).reduce((s, e) => s + materialCost(e), 0));
@@ -20,10 +57,7 @@ export function MaterialsSheet() {
   const acc = records.accomplishment.find((a) => a.date === date);
   const budget = dailyBudget.materials;
 
-  const [f, setF] = useState({ material: '', unit: 'm³', delivered: '', consumed: '0', cost: '', waste: '0' });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-  const d = { delivered: n(f.delivered), consumed: n(f.consumed), cost: n(f.cost), waste: n(f.waste) };
-  const valid = f.material.trim() !== '' && f.unit.trim() !== '' && ok(d.delivered, d.consumed, d.cost, d.waste);
+  const { AddButton, RowActions, modals } = useRecordCrud(SPEC, date);
 
   // Material balance & unit price movement across the week
   const materials = Array.from(new Set(records.materials.map((m) => m.material)));
@@ -53,24 +87,13 @@ export function MaterialsSheet() {
         />
       </Readout>
 
-      <EntryForm
-        title={`Record material for ${dayLabel(date)}`}
-        valid={valid}
-        preview={<span className="num">{php(valid ? d.delivered * d.cost : 0)}</span>}
-        onSubmit={() => {
-          add('materials', { date, material: f.material.trim(), unit: f.unit.trim(), delivered: d.delivered, consumed: d.consumed, unitCost: d.cost, wastage: d.waste });
-          setF({ ...f, material: '', delivered: '', cost: '' });
-        }}
+      <Panel
+        refNo="07-A"
+        title={`Materials — ${dayLabel(date)}`}
+        sub="Actual cost is booked on delivery: qty delivered × unit cost"
+        flush
+        actions={<AddButton label="Record material" />}
       >
-        <Field label="Material" value={f.material} onChange={set('material')} placeholder="e.g. Gravel" />
-        <Field label="Unit" value={f.unit} onChange={set('unit')} />
-        <Field label="Qty delivered" numeric value={f.delivered} onChange={set('delivered')} />
-        <Field label="Qty consumed" numeric value={f.consumed} onChange={set('consumed')} />
-        <Field label="Unit cost ₱" numeric value={f.cost} onChange={set('cost')} />
-        <Field label="Wastage qty" numeric value={f.waste} onChange={set('waste')} />
-      </EntryForm>
-
-      <Panel refNo="07-A" title={`Materials — ${dayLabel(date)}`} sub="Actual cost is booked on delivery: qty delivered × unit cost" flush>
         <div className="table-wrap">
           <table className="tbl">
             <thead>
@@ -97,8 +120,8 @@ export function MaterialsSheet() {
                   <td className="r num">{e.wastage ? `${qty(e.wastage)} ${e.unit}` : <span className="muted">—</span>}</td>
                   <td className="r num">{php(e.unitCost)}</td>
                   <td className="r num">{php(materialCost(e))}</td>
-                  <td className="r">
-                    <DeleteButton onClick={() => remove('materials', e.id)} label={e.material} />
+                  <td>
+                    <RowActions row={e} />
                   </td>
                 </tr>
               ))}
@@ -161,6 +184,8 @@ export function MaterialsSheet() {
           </table>
         </div>
       </Panel>
+
+      {modals}
     </>
   );
 }

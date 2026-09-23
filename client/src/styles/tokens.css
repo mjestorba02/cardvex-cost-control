@@ -1,83 +1,103 @@
 /*
- * CARDVEX Cost Control — design tokens
- * Concept: an engineer's ledger / drawing sheet.
- * Warm drafting paper, ink hairlines, a title block, safety-orange used sparingly.
- * Three layers: primitive → semantic → component. Components only use semantic tokens.
+ * ASDEC Builders Corporation — Cost Control design tokens
+ *
+ * Palette sampled directly from the corporate logo:
+ *   red #D40011 · gold #D09D01 · black #000000 · white #FFFFFF
+ *
+ * Red and gold are reserved as the identity + status colours (over / watch),
+ * so the chart series palette deliberately avoids the red-gold family.
+ * Three layers: primitive → semantic → component. Components use semantic only.
  */
 
 :root {
-  /* ---------- primitives ---------- */
-  --paper-50: #fbfaf7;
-  --paper-100: #f4f2ec;
-  --paper-200: #ebe8df;
-  --paper-300: #dedbd2;
-  --paper-400: #c9c5b9;
-  --ink-900: #16171a;
-  --ink-700: #3d3e43;
-  --ink-500: #5f6066;
-  --ink-400: #85868b;
-  --hivis-600: #c2410c;
-  --hivis-500: #e8590c;
-  --hivis-100: #fbe6d8;
+  /* ---------- primitives: brand ---------- */
+  --asdec-red: #d40011;
+  --asdec-red-deep: #a80010;
+  --asdec-red-wash: #fde7e8;
+  --asdec-gold: #d09d01;
+  --asdec-gold-deep: #8a6a00;
+  --asdec-gold-wash: #faf0d6;
+  --asdec-black: #111113;
+
+  /* ---------- primitives: neutrals ---------- */
+  --n-0: #ffffff;
+  --n-50: #f9f8f7;
+  --n-100: #f3f2f0;
+  --n-200: #eceae7;
+  --n-300: #e0dedb;
+  --n-400: #cbc9c4;
+  --n-600: #86868a;
+  --n-700: #5e5e62;
+  --n-800: #3a3a3d;
+  --n-900: #111113;
 
   /* ---------- semantic: surfaces & ink ---------- */
   color-scheme: light;
-  --bg: var(--paper-100);
-  --surface: var(--paper-50);
-  --surface-2: #f7f5f0;
-  --surface-sunk: var(--paper-200);
-  --ink: var(--ink-900);
-  --ink-2: var(--ink-700);
-  --ink-3: var(--ink-500);
-  --ink-4: var(--ink-400);
-  --rule: var(--paper-300);
-  --rule-strong: var(--paper-400);
-  --rule-ink: var(--ink-900);
+  --bg: var(--n-100);
+  --surface: var(--n-0);
+  --surface-2: var(--n-50);
+  --surface-sunk: var(--n-200);
+  --ink: var(--n-900);
+  --ink-2: var(--n-800);
+  --ink-3: var(--n-700);
+  --ink-4: var(--n-600);
+  --rule: var(--n-300);
+  --rule-strong: var(--n-400);
+  --rule-ink: var(--n-900);
 
-  --accent: var(--hivis-600);
-  --accent-mark: var(--hivis-500);
-  --accent-wash: var(--hivis-100);
+  --band-bg: var(--n-900);
+  --band-ink: var(--n-0);
+
+  --accent: var(--asdec-red);
+  --accent-hover: var(--asdec-red-deep);
+  --accent-mark: var(--asdec-red);
+  --accent-wash: var(--asdec-red-wash);
   --on-accent: #ffffff;
+  --gold: var(--asdec-gold);
+  --gold-ink: var(--asdec-gold-deep);
+  --gold-wash: var(--asdec-gold-wash);
 
-  /* status — always paired with an icon + label */
-  --good: #0a6b0a;
-  --good-mark: #0ca30c;
-  --good-wash: #e3f1e0;
-  --watch: #8a5a00;
-  --watch-mark: #fab219;
-  --watch-wash: #fbf0d4;
-  --over: #b42318;
-  --over-mark: #d03b3b;
-  --over-wash: #f9e1dd;
+  /* status — always paired with an icon + word, never colour alone */
+  --good: #0a7a0a;
+  --good-mark: #16a34a;
+  --good-wash: #e4f3e4;
+  --watch: var(--asdec-gold-deep);
+  --watch-mark: var(--asdec-gold);
+  --watch-wash: var(--asdec-gold-wash);
+  --over: #b00010;
+  --over-mark: var(--asdec-red);
+  --over-wash: var(--asdec-red-wash);
 
-  /* ---------- data series (validated: adjacent CVD ΔE ≥ 9.1) ---------- */
+  /* ---------- data series ----------
+     Validated (adjacent CVD ΔE 16.3 light / 13.2 dark, normal-vision 19.6 / 19.3).
+     Kept clear of red + gold so a series never impersonates a status. */
   --s1: #2a78d6; /* equipment */
-  --s2: #eb6834; /* fuel */
-  --s3: #1baf7a; /* labor */
-  --s4: #eda100; /* materials */
-  --s5: #e87ba4; /* maintenance */
-  --s-other: #9a978c;
+  --s2: #1baf7a; /* fuel */
+  --s3: #4a3aa7; /* labor */
+  --s4: #e87ba4; /* materials */
+  --s5: #eda100; /* maintenance */
+  --s-other: #8d8c88;
   --s-actual: #2a78d6;
-  --s-plan: #8b887e;
-  --grid: #e6e3da;
-  --axis: #c9c5b9;
+  --s-plan: #8b8a84;
+  --grid: #eceae7;
+  --axis: #cbc9c4;
 
   /* ---------- type ---------- */
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  --fs-2xs: 0.6875rem; /* 11 — sheet refs only */
-  --fs-xs: 0.75rem; /* 12 */
-  --fs-sm: 0.8125rem; /* 13 */
-  --fs-md: 0.875rem; /* 14 — tables */
-  --fs-base: 0.9375rem; /* 15 */
+  --fs-2xs: 0.6875rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.875rem;
+  --fs-base: 0.9375rem;
   --fs-lg: 1.125rem;
   --fs-xl: 1.5rem;
   --fs-2xl: 2rem;
   --fs-3xl: 2.625rem;
 
-  /* ---------- space (dense scale, 4px base) ---------- */
+  /* ---------- space (dense, 4px base) ---------- */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -89,82 +109,105 @@
 
   --radius-sm: 3px;
   --radius: 4px;
+  --radius-lg: 6px;
   --sidebar-w: 272px;
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --dur: 180ms;
 
-  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-mark);
+  --shadow-modal: 0 24px 60px rgba(17, 17, 19, 0.28), 0 2px 8px rgba(17, 17, 19, 0.12);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }
 
+/* ---------- dark: selected steps, not an inverted light theme ---------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #0f1012;
+    --bg: #101012;
     --surface: #17181b;
-    --surface-2: #1c1d21;
-    --surface-sunk: #0b0c0d;
-    --ink: #f1efe9;
-    --ink-2: #c4c2ba;
-    --ink-3: #9a988f;
-    --ink-4: #75736c;
-    --rule: #2a2b30;
-    --rule-strong: #3b3c42;
-    --rule-ink: #d8d6cf;
-    --accent: #ff8a4c;
-    --accent-mark: #f06a24;
-    --accent-wash: #3a1f12;
-    --on-accent: #16171a;
-    --good: #4cc34c;
-    --good-wash: #13261a;
-    --watch: #f5b93a;
-    --watch-wash: #2d2410;
-    --over: #ff7a70;
-    --over-wash: #34171a;
+    --surface-2: #1d1e21;
+    --surface-sunk: #0c0c0e;
+    --ink: #f3f2ef;
+    --ink-2: #c8c7c2;
+    --ink-3: #9b9a96;
+    --ink-4: #75746f;
+    --rule: #2a2b2f;
+    --rule-strong: #3b3c41;
+    --rule-ink: #d9d8d4;
+    --band-bg: #08080a;
+    --band-ink: #f3f2ef;
+    --accent: #ff4d5a;
+    --accent-hover: #ff6b72;
+    --accent-mark: #e21526;
+    --accent-wash: #37141a;
+    --on-accent: #ffffff;
+    --gold: #e8b923;
+    --gold-ink: #e8b923;
+    --gold-wash: #322611;
+    --good: #4ade80;
+    --good-mark: #22c55e;
+    --good-wash: #12291a;
+    --watch: #e8b923;
+    --watch-mark: #d09d01;
+    --watch-wash: #322611;
+    --over: #ff4d5a;
+    --over-mark: #e21526;
+    --over-wash: #37141a;
     --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
-    --s4: #c98500;
-    --s5: #d55181;
-    --s-other: #77756e;
+    --s2: #199e70;
+    --s3: #9085e9;
+    --s4: #d55181;
+    --s5: #c98500;
+    --s-other: #7c7b76;
     --s-actual: #3987e5;
-    --s-plan: #8d8b84;
+    --s-plan: #8d8c86;
     --grid: #25262a;
-    --axis: #3b3c42;
+    --axis: #3b3c41;
+    --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0f1012;
+  --bg: #101012;
   --surface: #17181b;
-  --surface-2: #1c1d21;
-  --surface-sunk: #0b0c0d;
-  --ink: #f1efe9;
-  --ink-2: #c4c2ba;
-  --ink-3: #9a988f;
-  --ink-4: #75736c;
-  --rule: #2a2b30;
-  --rule-strong: #3b3c42;
-  --rule-ink: #d8d6cf;
-  --accent: #ff8a4c;
-  --accent-mark: #f06a24;
-  --accent-wash: #3a1f12;
-  --on-accent: #16171a;
-  --good: #4cc34c;
-  --good-wash: #13261a;
-  --watch: #f5b93a;
-  --watch-wash: #2d2410;
-  --over: #ff7a70;
-  --over-wash: #34171a;
+  --surface-2: #1d1e21;
+  --surface-sunk: #0c0c0e;
+  --ink: #f3f2ef;
+  --ink-2: #c8c7c2;
+  --ink-3: #9b9a96;
+  --ink-4: #75746f;
+  --rule: #2a2b2f;
+  --rule-strong: #3b3c41;
+  --rule-ink: #d9d8d4;
+  --band-bg: #08080a;
+  --band-ink: #f3f2ef;
+  --accent: #ff4d5a;
+  --accent-hover: #ff6b72;
+  --accent-mark: #e21526;
+  --accent-wash: #37141a;
+  --on-accent: #ffffff;
+  --gold: #e8b923;
+  --gold-ink: #e8b923;
+  --gold-wash: #322611;
+  --good: #4ade80;
+  --good-mark: #22c55e;
+  --good-wash: #12291a;
+  --watch: #e8b923;
+  --watch-mark: #d09d01;
+  --watch-wash: #322611;
+  --over: #ff4d5a;
+  --over-mark: #e21526;
+  --over-wash: #37141a;
   --s1: #3987e5;
-  --s2: #d95926;
-  --s3: #199e70;
-  --s4: #c98500;
-  --s5: #d55181;
-  --s-other: #77756e;
+  --s2: #199e70;
+  --s3: #9085e9;
+  --s4: #d55181;
+  --s5: #c98500;
+  --s-other: #7c7b76;
   --s-actual: #3987e5;
-  --s-plan: #8d8b84;
+  --s-plan: #8d8c86;
   --grid: #25262a;
-  --axis: #3b3c42;
+  --axis: #3b3c41;
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
 }

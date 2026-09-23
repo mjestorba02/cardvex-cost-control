@@ -97,17 +97,30 @@ textarea {
   background: var(--surface);
   overflow: hidden;
 }
+/* Corporate lockup, presented on its own plate the way it sits on letterhead. */
 .brand {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid var(--rule);
+  display: block;
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
   text-decoration: none;
+  flex: 1;
+  min-width: 0;
+}
+/* The wordmark swaps between black and white ink with the theme, so the plate
+   must follow the surface — a fixed white plate would hide the white logo. */
+.brand__plate {
+  display: block;
+  background: var(--surface);
+  padding: 0px 10px;
+}
+.brand__logo {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
 }
 .brand__mark {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   flex: none;
 }
 .brand__name {
@@ -118,9 +131,32 @@ textarea {
   line-height: 1;
 }
 .brand__sub {
-  font-size: var(--fs-xs);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
   color: var(--ink-3);
-  margin-top: 3px;
+  margin-top: var(--sp-2);
+}
+/* The logo's three colours as a rule — used under the lockup and the title block */
+.keyline {
+  display: flex;
+  height: 3px;
+  flex: none;
+}
+.keyline i {
+  flex: 1;
+}
+.keyline i:nth-child(1) {
+  background: var(--asdec-red);
+  flex: 1.6;
+}
+.keyline i:nth-child(2) {
+  background: var(--asdec-gold);
+}
+.keyline i:nth-child(3) {
+  background: var(--ink);
+  flex: 0.6;
 }
 
 .sheet-nav {
@@ -463,7 +499,12 @@ textarea {
   flex-direction: column;
   justify-content: space-between;
   gap: var(--sp-3);
-  background: var(--surface-2);
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+.band__label .muted {
+  color: inherit;
+  opacity: 0.66;
 }
 .band__label h2 {
   font-family: var(--font-cond);
@@ -680,10 +721,24 @@ textarea {
   background: var(--ink-2);
   border-color: var(--ink-2);
 }
+/* The brand red is the "commit the record" colour — used for one action per view. */
 .btn--accent {
-  background: var(--accent-mark);
-  border-color: var(--accent-mark);
+  background: var(--asdec-red);
+  border-color: var(--asdec-red);
   color: #fff;
+}
+.btn--accent:hover {
+  background: var(--asdec-red-deep);
+  border-color: var(--asdec-red-deep);
+}
+.btn--danger {
+  background: var(--asdec-red);
+  border-color: var(--asdec-red);
+  color: #fff;
+}
+.btn--danger:hover {
+  background: var(--asdec-red-deep);
+  border-color: var(--asdec-red-deep);
 }
 .btn--ghost {
   border-color: transparent;
@@ -698,8 +753,14 @@ textarea {
   padding: 0 var(--sp-3);
   font-size: var(--fs-sm);
 }
+/* Must re-zero the padding: .btn--sm sets it after .btn--icon and would
+   otherwise crush the glyph to a few pixels. */
 .btn--icon.btn--sm {
   width: 30px;
+  padding: 0;
+}
+.btn svg {
+  flex: none;
 }
 
 .seg {
@@ -846,9 +907,15 @@ textarea {
 }
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--sp-3);
-  align-items: end;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-4) var(--sp-3);
+  /* start, not end: fields carry hint text of differing heights below the input */
+  align-items: start;
+}
+.form-grid .field label {
+  min-height: 2.1em;
+  display: flex;
+  align-items: flex-end;
 }
 .form-preview {
   display: flex;
@@ -1337,4 +1404,175 @@ a.chain__step:hover {
 }
 .cause-card legend + * {
   clear: both;
+}
+
+/* ================= modal layer ================= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(17, 17, 19, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--sp-8) var(--sp-4);
+  overflow-y: auto;
+  animation: fade-in 140ms var(--ease);
+}
+.modal {
+  position: relative;
+  width: min(680px, 100%);
+  margin: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--sp-10));
+  overflow: hidden;
+  animation: modal-in 180ms var(--ease);
+}
+.modal--sm {
+  width: min(460px, 100%);
+}
+.modal--wide {
+  width: min(860px, 100%);
+}
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--rule);
+}
+.modal__titles {
+  flex: 1;
+  min-width: 0;
+}
+.modal__title {
+  font-family: var(--font-cond);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.modal__sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.modal__body {
+  padding: var(--sp-5);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+.modal__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--rule);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.modal__computed {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-sunk);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--asdec-gold);
+}
+.modal__computed .num {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.modal__error {
+  color: var(--over);
+  font-size: var(--fs-sm);
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+
+/* row actions in data tables */
+.row-actions {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.tbl tbody tr:hover .row-actions .btn {
+  border-color: var(--rule-strong);
+}
+.row-actions .btn {
+  border-color: transparent;
+}
+.btn--icon.btn--sm:hover {
+  color: var(--accent);
+}
+
+/* active tab underline in the brand gold */
+.seg [aria-selected='true'] {
+  box-shadow: inset 0 -3px 0 var(--asdec-gold);
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop {
+    padding: 0;
+    align-items: stretch;
+  }
+  .modal,
+  .modal--sm,
+  .modal--wide {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+    margin: 0;
+    height: 100dvh;
+  }
+  .modal__body {
+    padding: var(--sp-4);
+  }
+  .modal__foot {
+    padding: var(--sp-3) var(--sp-4);
+    padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
+  }
+  .modal__foot .btn {
+    flex: 1;
+  }
+}
+
+/* variance analysis dialog */
+.cause-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.cause-fields legend {
+  padding: 0;
+  margin-bottom: var(--sp-1);
+}
+.cause-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0 var(--sp-4);
+}
+
+.modal__foot .btn {
+  white-space: nowrap;
 }
